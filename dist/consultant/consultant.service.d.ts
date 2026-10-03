@@ -1,5 +1,5 @@
-import { MailService } from 'src/mail/mail.service';
-import { Consultant } from 'src/entities/consultant.entity';
+import { MailService } from "../mail/mail.service";
+import { Consultant } from "../entities/consultant.entity";
 import { Repository } from 'typeorm';
 export declare class ConsultantService {
     private consultantRepo;
@@ -24,6 +24,6 @@ export declare class ConsultantService {
     }>;
     Email(mydata: any): Promise<{
         simulated: boolean;
-        messageId: any;
+        messageId: string;
     }>;
 }

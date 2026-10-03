@@ -1,7 +1,7 @@
 import { Repository } from 'typeorm';
 import { Admin } from "../entities/admin.entity";
 import { AdminUpdateDto } from "../dtos/admin-update.dto";
-import { MailService } from 'src/mail/mail.service';
+import { MailService } from "../mail/mail.service";
 export declare class AdminService {
     private adminRepo;
     private mailService;
@@ -34,6 +34,6 @@ export declare class AdminService {
     signin(mydto: any): Promise<false | Admin>;
     sendEmail(mydata: any): Promise<{
         simulated: boolean;
-        messageId: any;
+        messageId: string;
     }>;
 }

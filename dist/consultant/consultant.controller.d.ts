@@ -1,8 +1,8 @@
 import { JwtService } from '@nestjs/jwt';
-import { ManagerService } from 'src/manager/manager.service';
+import { ManagerService } from "../manager/manager.service";
 import { ConsultantService } from './consultant.service';
-import { ConsultantDto } from 'src/dtos/Consultant.dto';
-import { ApplicationService } from 'src/student/application.service';
+import { ConsultantDto } from "../dtos/Consultant.dto";
+import { ApplicationService } from "../student/application.service";
 export declare class ConsultantController {
     private consultantService;
     private managerService;
@@ -28,7 +28,7 @@ export declare class ConsultantController {
         message: string;
         result: {
             simulated: boolean;
-            messageId: any;
+            messageId: string;
         };
     }>;
 }

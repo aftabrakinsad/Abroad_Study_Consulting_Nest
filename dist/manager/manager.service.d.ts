@@ -1,7 +1,7 @@
 import { Repository } from 'typeorm';
 import { Manager } from "../entities/manager.entity";
-import { ManagerUpdateDto } from "src/dtos/manager-update.dto";
-import { MailService } from 'src/mail/mail.service';
+import { ManagerUpdateDto } from "../dtos/manager-update.dto";
+import { MailService } from "../mail/mail.service";
 export declare class ManagerService {
     private managerRepo;
     private mailService;
@@ -24,6 +24,6 @@ export declare class ManagerService {
     signin(mydto: any): Promise<false | Manager>;
     Email(mydata: any): Promise<{
         simulated: boolean;
-        messageId: any;
+        messageId: string;
     }>;
 }

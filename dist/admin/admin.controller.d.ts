@@ -1,15 +1,15 @@
 import { JwtService } from '@nestjs/jwt';
-import { ManagerService } from 'src/manager/manager.service';
+import { ManagerService } from "../manager/manager.service";
 import { AdminUpdateDto } from '../dtos/admin-update.dto';
 import { AdminService } from './admin.service';
 import { AdminDto } from '../dtos/admin.dto';
-import { ManagerDto } from 'src/dtos/manager.dto';
-import { ConsultantDto } from 'src/dtos/Consultant.dto';
-import { ConsultantService } from 'src/consultant/consultant.service';
-import { ManagerUpdateDto } from 'src/dtos/manager-update.dto';
-import { CounsultantUpdateDto } from 'src/dtos/consultant-update.dtp';
-import { StudentService } from 'src/student/student.service';
-import { ApplicationService } from 'src/student/application.service';
+import { ManagerDto } from "../dtos/manager.dto";
+import { ConsultantDto } from "../dtos/Consultant.dto";
+import { ConsultantService } from "../consultant/consultant.service";
+import { ManagerUpdateDto } from "../dtos/manager-update.dto";
+import { CounsultantUpdateDto } from "../dtos/consultant-update.dtp";
+import { StudentService } from "../student/student.service";
+import { ApplicationService } from "../student/application.service";
 export declare class AdminController {
     private adminService;
     private managerService;
@@ -65,7 +65,7 @@ export declare class AdminController {
         message: string;
         result: {
             simulated: boolean;
-            messageId: any;
+            messageId: string;
         };
         error?: undefined;
     } | {
