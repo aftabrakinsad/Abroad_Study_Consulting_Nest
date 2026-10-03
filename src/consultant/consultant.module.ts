@@ -1,26 +1,15 @@
 import { Module } from '@nestjs/common';
-import { ConsultantService } from './consultant.service';
-import { Consultant } from 'src/entities/consultant.entity';
+import { StudentModule } from 'src/student/student.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { MailerModule } from '@nestjs-modules/mailer';
+import { Consultant } from 'src/entities/consultant.entity';
+import { Manager } from 'src/entities/manager.entity';
+import { ConsultantController } from './consultant.controller';
+import { ConsultantService } from './consultant.service';
+import { ManagerService } from 'src/manager/manager.service';
 
 @Module({
-  imports: [
-    MailerModule.forRoot({
-        transport: {
-        host: 'smtp.gmail.com',
-            port: 465,
-            ignoreTLS: true,
-            secure: true,
-            auth: {
-                user: 'rakinsadaftab@gmail.com',
-                pass: 'rvaxlwlwfhbztjbm',
-            },
-        }
-    }),
-    TypeOrmModule.forFeature([Consultant])
-  ],
-  controllers: [],
-  providers: [ConsultantService]
+  imports: [StudentModule, TypeOrmModule.forFeature([Consultant, Manager])],
+  controllers: [ConsultantController],
+  providers: [ConsultantService, ManagerService]
 })
 export class ConsultantModule {}

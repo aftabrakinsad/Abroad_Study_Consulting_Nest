@@ -99,3 +99,28 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](LICENSE).
+## Running locally
+
+```bash
+cp .env.example .env   # fill in your Postgres settings
+npm install
+npm run start:dev      # http://localhost:3001
+```
+
+Students (users) register at `/user/signup`; they're the only accounts that can register. Admins, managers and consultants only sign in (`/admin/signin`, `/manager/signin`, `/consultant/signin`) with accounts created by an admin. The JWT carries the user's role, and each controller only accepts its own role. Only the master admin (`isMaster`) can create, edit or delete admins.
+
+Application workflow: a student submits an application, a manager or admin assigns it to a consultant, and the consultant updates its status and leaves a note the student can see.
+
+On startup the app creates one demo account per role (`DEMO_EMAIL` is the master admin; plus `DEMO_MANAGER_EMAIL`, `DEMO_CONSULTANT_EMAIL`, `DEMO_USER_EMAIL`, all using `DEMO_PASSWORD`) and a sample application. Demo accounts can't be deleted and their passwords can't be changed, so they keep working for visitors.
+
+## Deployment
+
+The API runs on [Render](https://render.com) (see `render.yaml`) with a PostgreSQL database on [Neon](https://neon.tech). The frontend lives in [Abroad_Study_Consulting_Next](https://github.com/aftabrakinsad/Abroad_Study_Consulting_Next).
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Postgres connection string (set `DB_SSL=true` for Neon) |
+| `FRONTEND_URL` | Allowed CORS origin(s), comma-separated |
+| `JWT_SECRET` | Secret used to sign login tokens |
+| `DEMO_EMAIL`, `DEMO_MANAGER_EMAIL`, `DEMO_CONSULTANT_EMAIL`, `DEMO_USER_EMAIL`, `DEMO_PASSWORD` | Demo accounts, one per role (`DEMO_EMAIL` is the master admin) |
+| `SMTP_*` | Optional. Without `SMTP_HOST`, emails are simulated instead of sent |

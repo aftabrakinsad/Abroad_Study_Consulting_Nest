@@ -1,22 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import * as session from 'express-session';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use(
-    session({
-      secret: 'my-secret',
-      resave: false,
-      saveUninitialized: true,
-      cookie: {
-        secure: false, 
-      }
-    }),
-  );
-  app.enableCors();
-  await app.listen(3001, ()=> {
-    console.log('Server is running on port 3001');
+
+  // FRONTEND_URL may hold several comma-separated origins (e.g. prod + preview URLs)
+  const origins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim());
+  app.enableCors({ origin: origins });
+
+  const port = process.env.PORT || 3001;
+  await app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
   });
 }
 bootstrap();

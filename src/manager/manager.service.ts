@@ -1,12 +1,13 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Manager } from "../entities/manager.entity";
 import { ManagerDto } from "../dtos/manager.dto";
 import { Admin } from "src/entities/admin.entity";
 import { ManagerUpdateDto } from "src/dtos/manager-update.dto";
-import { MailerService } from "@nestjs-modules/mailer/dist";
-import * as bcrypt from 'bcrypt';
+import { MailService } from 'src/mail/mail.service';
+import * as bcrypt from 'bcryptjs';
+import { isDemoAccount } from 'src/auth/demo';
 
 
 @Injectable()
@@ -14,11 +15,12 @@ export class ManagerService {
     constructor(
         @InjectRepository(Manager)
         private managerRepo: Repository<Manager>,
-        private mailerService: MailerService
+        private mailService: MailService
      ) {}
 
-    getManagers(): any {
-        return this.managerRepo.find();
+    async getManagers(): Promise<any> {
+        const rows = await this.managerRepo.find({ order: { id: 'ASC' } });
+        return rows.map(({ password, ...row }) => row);
     }
 
     async getManagerById(id)
@@ -41,7 +43,7 @@ export class ManagerService {
         const data = await this.managerRepo.findOne({ where: { email } });
         if (data !== null)
         {
-            const { id, ...filteredData } = data;
+            const { password, ...filteredData } = data;
             return filteredData;
         }
         else
@@ -108,9 +110,34 @@ export class ManagerService {
         return this.managerRepo.update(id, mydto);
     }
 
-    deleteManagerbyId(id): any
+    async deleteManagerbyId(id)
     {
+        const manager = await this.managerRepo.findOne({ where: { id } });
+        if (manager && isDemoAccount(manager.email))
+        {
+            throw new ForbiddenException({ message: "The demo account can't be deleted" });
+        }
         return this.managerRepo.delete(id);
+    }
+
+    // Lets a signed-in manager edit their own name, address and (optionally) password
+    async updateProfile(email, mydto)
+    {
+        if (!mydto.name || mydto.name.trim() === '')
+        {
+            throw new HttpException({ message: "Please provide the name" }, HttpStatus.BAD_REQUEST);
+        }
+        if (!mydto.address || mydto.address.trim() === '')
+        {
+            throw new HttpException({ message: "Please provide the address" }, HttpStatus.BAD_REQUEST);
+        }
+        const changes: Partial<Manager> = { name: mydto.name, address: mydto.address };
+        if (mydto.password && !isDemoAccount(email))
+        {
+            changes.password = await bcrypt.hash(mydto.password, await bcrypt.genSalt());
+        }
+        await this.managerRepo.update({ email }, changes);
+        return { message: 'Profile updated' };
     }
         
     // getAdminByManagerID(id): any {
@@ -122,37 +149,6 @@ export class ManagerService {
     //     });
     // }
 
-    async signup(mydto)
-    {
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(mydto.password, salt);
-        mydto.password = hashedPassword;
-
-        const existingManager = await this.managerRepo.findOne({ where: { name: mydto.name } });
-        const existingManagerEmail = await this.managerRepo.findOne({ where: { email: mydto.email } });
-
-        if (mydto.name === '')
-        {
-            throw new HttpException({ message: "Please provide the username" }, HttpStatus.BAD_REQUEST);
-        } 
-        else if (mydto.address === '')
-        {
-            throw new HttpException({ message: "Please provide the address" }, HttpStatus.BAD_REQUEST);
-        }
-        else if (existingManager)
-        {
-            throw new HttpException({ message: "Username already exists" }, HttpStatus.BAD_REQUEST);
-        }
-        else if(existingManagerEmail)
-        {
-            throw new HttpException({ message: "Email already exists" }, HttpStatus.BAD_REQUEST);
-        }
-        else 
-        {
-            await this.managerRepo.save(mydto);
-            throw new HttpException('Registration Successful', HttpStatus.OK);
-        }
-    }
 
     async signin(mydto)
     {
@@ -166,7 +162,7 @@ export class ManagerService {
             const isMatch = await bcrypt.compare(mydto.password, mydata.password);
             if (isMatch)
             {
-                return true;
+                return mydata;
             }
             else
             {
@@ -181,7 +177,7 @@ export class ManagerService {
 
     async Email(mydata)
     {
-        return  await this.mailerService.sendMail({
+        return  await this.mailService.sendMail({
             to: mydata.email,
             subject: mydata.subject,
             text: mydata.text, 

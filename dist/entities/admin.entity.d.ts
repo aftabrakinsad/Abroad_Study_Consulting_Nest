@@ -4,4 +4,5 @@ export declare class Admin {
     email: string;
     password: string;
     address: string;
+    isMaster: boolean;
 }

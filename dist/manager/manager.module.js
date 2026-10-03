@@ -8,31 +8,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ManagerModule = void 0;
 const common_1 = require("@nestjs/common");
+const student_module_1 = require("../student/student.module");
 const typeorm_1 = require("@nestjs/typeorm");
 const manager_entity_1 = require("../entities/manager.entity");
-const mailer_1 = require("@nestjs-modules/mailer");
+const consultant_entity_1 = require("../entities/consultant.entity");
+const manager_controller_1 = require("./manager.controller");
 const manager_service_1 = require("./manager.service");
+const consultant_service_1 = require("../consultant/consultant.service");
 let ManagerModule = class ManagerModule {
 };
 ManagerModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            mailer_1.MailerModule.forRoot({
-                transport: {
-                    host: 'smtp.gmail.com',
-                    port: 465,
-                    ignoreTLS: true,
-                    secure: true,
-                    auth: {
-                        user: 'rakinsadaftab@gmail.com',
-                        pass: 'rvaxlwlwfhbztjbm',
-                    },
-                }
-            }),
-            typeorm_1.TypeOrmModule.forFeature([manager_entity_1.Manager])
-        ],
-        controllers: [],
-        providers: [manager_service_1.ManagerService],
+        imports: [student_module_1.StudentModule, typeorm_1.TypeOrmModule.forFeature([manager_entity_1.Manager, consultant_entity_1.Consultant])],
+        controllers: [manager_controller_1.ManagerController],
+        providers: [manager_service_1.ManagerService, consultant_service_1.ConsultantService],
     })
 ], ManagerModule);
 exports.ManagerModule = ManagerModule;

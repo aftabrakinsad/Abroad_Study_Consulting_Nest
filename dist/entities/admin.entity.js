@@ -33,6 +33,10 @@ __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], Admin.prototype, "address", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Admin.prototype, "isMaster", void 0);
 Admin = __decorate([
     (0, typeorm_1.Entity)("admin")
 ], Admin);

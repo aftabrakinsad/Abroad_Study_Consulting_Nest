@@ -14,61 +14,124 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConsultantController = void 0;
 const common_1 = require("@nestjs/common");
+const jwt_1 = require("@nestjs/jwt");
+const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const roles_decorator_1 = require("../auth/roles.decorator");
+const manager_service_1 = require("../manager/manager.service");
 const consultant_service_1 = require("./consultant.service");
 const Consultant_dto_1 = require("../dtos/Consultant.dto");
+const application_service_1 = require("../student/application.service");
 let ConsultantController = class ConsultantController {
-    constructor(consultantService) {
+    constructor(consultantService, managerService, jwtService, applicationService) {
         this.consultantService = consultantService;
+        this.managerService = managerService;
+        this.jwtService = jwtService;
+        this.applicationService = applicationService;
     }
-    getProfile(session) {
-        return this.consultantService.con_profie(session.email);
-    }
-    async signup(mydto) {
-        return this.consultantService.signup(mydto);
-    }
-    signout(session) {
-        if (session.destroy()) {
-            return { message: "you are logged out" };
+    async signin(mydto) {
+        const consultant = await this.consultantService.signin(mydto);
+        if (!consultant) {
+            throw new common_1.UnauthorizedException({ message: "invalid credentials" });
         }
-        else {
-            throw new common_1.UnauthorizedException("invalid actions");
-        }
+        const token = await this.jwtService.signAsync({ sub: consultant.id, email: consultant.email, role: 'consultant' });
+        return { message: "Login Successful!", token, email: consultant.email, name: consultant.name, role: 'consultant' };
     }
-    sendEmail(mydata) {
-        return this.consultantService.Email(mydata);
+    signout() {
+        return { message: "You are logged out" };
+    }
+    getProfile(req) {
+        return this.consultantService.con_profie(req.user.email);
+    }
+    updateProfile(req, mydto) {
+        return this.consultantService.updateProfile(req.user.email, mydto);
+    }
+    getManagers() {
+        return this.managerService.getManagers();
+    }
+    getApplications(req) {
+        return this.applicationService.getForConsultant(req.user.sub);
+    }
+    updateApplication(req, id, mydto) {
+        return this.applicationService.updateStatus(id, req.user.sub, mydto);
+    }
+    async sendEmail(mydata) {
+        const result = await this.consultantService.Email(mydata);
+        const message = result.simulated
+            ? 'Email simulated (sending is disabled in the demo)'
+            : 'Email sent successfully';
+        return { message, result };
     }
 };
 __decorate([
+    (0, common_1.Post)('/signin'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Consultant_dto_1.ConsultantDto]),
+    __metadata("design:returntype", Promise)
+], ConsultantController.prototype, "signin", null);
+__decorate([
+    (0, common_1.Post)('/signout'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], ConsultantController.prototype, "signout", null);
+__decorate([
     (0, common_1.Get)('/profile'),
-    __param(0, (0, common_1.Session)()),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Object)
 ], ConsultantController.prototype, "getProfile", null);
 __decorate([
-    (0, common_1.Post)('/signup'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.Put)('/profile'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Consultant_dto_1.ConsultantDto]),
-    __metadata("design:returntype", Promise)
-], ConsultantController.prototype, "signup", null);
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Object)
+], ConsultantController.prototype, "updateProfile", null);
 __decorate([
-    (0, common_1.Get)('/signout'),
-    __param(0, (0, common_1.Session)()),
+    (0, common_1.Get)('/managers'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Object)
+], ConsultantController.prototype, "getManagers", null);
+__decorate([
+    (0, common_1.Get)('/applications'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
-], ConsultantController.prototype, "signout", null);
+    __metadata("design:returntype", Object)
+], ConsultantController.prototype, "getApplications", null);
+__decorate([
+    (0, common_1.Put)('/applications/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number, Object]),
+    __metadata("design:returntype", Object)
+], ConsultantController.prototype, "updateApplication", null);
 __decorate([
     (0, common_1.Post)('/email'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ConsultantController.prototype, "sendEmail", null);
 ConsultantController = __decorate([
     (0, common_1.Controller)('consultant'),
-    __metadata("design:paramtypes", [consultant_service_1.ConsultantService])
+    (0, roles_decorator_1.Roles)('consultant'),
+    __metadata("design:paramtypes", [consultant_service_1.ConsultantService,
+        manager_service_1.ManagerService,
+        jwt_1.JwtService,
+        application_service_1.ApplicationService])
 ], ConsultantController);
 exports.ConsultantController = ConsultantController;
 //# sourceMappingURL=consultant.controller.js.map

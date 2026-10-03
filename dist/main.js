@@ -2,20 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
-const session = require("express-session");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    app.use(session({
-        secret: 'my-secret',
-        resave: false,
-        saveUninitialized: true,
-        cookie: {
-            secure: false,
-        }
-    }));
-    app.enableCors();
-    await app.listen(3001, () => {
-        console.log('Server is running on port 3001');
+    const origins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+        .split(',')
+        .map((o) => o.trim());
+    app.enableCors({ origin: origins });
+    const port = process.env.PORT || 3001;
+    await app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
     });
 }
 bootstrap();

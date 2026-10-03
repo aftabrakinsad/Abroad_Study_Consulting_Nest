@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: abroad-study-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SSL
+        value: "true"
+      - key: FRONTEND_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DEMO_EMAIL
+        value: demo@abroadstudy.com
+      - key: DEMO_MANAGER_EMAIL
+        value: manager.demo@abroadstudy.com
+      - key: DEMO_CONSULTANT_EMAIL
+        value: consultant.demo@abroadstudy.com
+      - key: DEMO_USER_EMAIL
+        value: user.demo@abroadstudy.com
+      - key: DEMO_PASSWORD
+        value: Demo@1234

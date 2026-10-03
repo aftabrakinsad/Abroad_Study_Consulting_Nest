@@ -24,19 +24,24 @@ var __rest = (this && this.__rest) || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConsultantService = void 0;
-const dist_1 = require("@nestjs-modules/mailer/dist");
+const mail_service_1 = require("../mail/mail.service");
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const consultant_entity_1 = require("../entities/consultant.entity");
 const typeorm_2 = require("typeorm");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
+const demo_1 = require("../auth/demo");
 let ConsultantService = class ConsultantService {
-    constructor(consultantRepo, mailerService) {
+    constructor(consultantRepo, mailService) {
         this.consultantRepo = consultantRepo;
-        this.mailerService = mailerService;
+        this.mailService = mailService;
     }
-    getConsultants() {
-        return this.consultantRepo.find();
+    async getConsultants() {
+        const rows = await this.consultantRepo.find({ order: { id: 'ASC' } });
+        return rows.map((_a) => {
+            var { password } = _a, row = __rest(_a, ["password"]);
+            return row;
+        });
     }
     async getTotalConsultants() {
         return this.consultantRepo.count();
@@ -44,7 +49,7 @@ let ConsultantService = class ConsultantService {
     async con_profie(email) {
         const data = await this.consultantRepo.findOne({ where: { email } });
         if (data !== null) {
-            const { id } = data, filteredData = __rest(data, ["id"]);
+            const { password } = data, filteredData = __rest(data, ["password"]);
             return filteredData;
         }
         else {
@@ -86,8 +91,40 @@ let ConsultantService = class ConsultantService {
             throw new common_1.HttpException('Consultant Added Successful.', common_1.HttpStatus.OK);
         }
     }
-    deleteConsultantId(id) {
+    async deleteConsultantId(id) {
+        const consultant = await this.consultantRepo.findOne({ where: { id } });
+        if (consultant && (0, demo_1.isDemoAccount)(consultant.email)) {
+            throw new common_1.ForbiddenException({ message: "The demo account can't be deleted" });
+        }
         return this.consultantRepo.delete(id);
+    }
+    async updateProfile(email, mydto) {
+        for (const [field, label] of [['name', 'name'], ['phone', 'phone number'], ['country', 'country']]) {
+            if (!mydto[field] || mydto[field].trim() === '') {
+                throw new common_1.HttpException({ message: `Please provide the ${label}` }, common_1.HttpStatus.BAD_REQUEST);
+            }
+        }
+        const samePhone = await this.consultantRepo.findOne({ where: { phone: mydto.phone } });
+        if (samePhone && samePhone.email !== email) {
+            throw new common_1.HttpException({ message: "Phone number already exists" }, common_1.HttpStatus.BAD_REQUEST);
+        }
+        const changes = { name: mydto.name, phone: mydto.phone, country: mydto.country };
+        if (mydto.password && !(0, demo_1.isDemoAccount)(email)) {
+            changes.password = await bcrypt.hash(mydto.password, await bcrypt.genSalt());
+        }
+        await this.consultantRepo.update({ email }, changes);
+        return { message: 'Profile updated' };
+    }
+    async signin(mydto) {
+        if (!mydto.email || !mydto.password) {
+            throw new common_1.UnauthorizedException({ message: "invalid credentials" });
+        }
+        const mydata = await this.consultantRepo.findOneBy({ email: mydto.email });
+        if (!mydata) {
+            throw new common_1.UnauthorizedException({ message: "Email didn't match" });
+        }
+        const isMatch = await bcrypt.compare(mydto.password, mydata.password);
+        return isMatch ? mydata : false;
     }
     async addConsultant(mydto) {
         const salt = await bcrypt.genSalt();
@@ -131,31 +168,8 @@ let ConsultantService = class ConsultantService {
             throw new common_1.HttpException('Not Found', common_1.HttpStatus.NOT_FOUND);
         }
     }
-    async signup(mydto) {
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(mydto.password, salt);
-        mydto.password = hashedPassword;
-        const existingConsultant = await this.consultantRepo.findOne({ where: { name: mydto.name } });
-        const existingConsultantEmail = await this.consultantRepo.findOne({ where: { email: mydto.email } });
-        if (mydto.name === '') {
-            throw new common_1.HttpException({ message: "Please provide the username" }, common_1.HttpStatus.BAD_REQUEST);
-        }
-        else if (mydto.country === '') {
-            throw new common_1.HttpException({ message: "Please provide the country" }, common_1.HttpStatus.BAD_REQUEST);
-        }
-        else if (existingConsultant) {
-            throw new common_1.HttpException({ message: "Username already exists" }, common_1.HttpStatus.BAD_REQUEST);
-        }
-        else if (existingConsultantEmail) {
-            throw new common_1.HttpException({ message: "Email already exists" }, common_1.HttpStatus.BAD_REQUEST);
-        }
-        else {
-            await this.consultantRepo.save(mydto);
-            throw new common_1.HttpException('Registration Successful', common_1.HttpStatus.OK);
-        }
-    }
     async Email(mydata) {
-        return await this.mailerService.sendMail({
+        return await this.mailService.sendMail({
             to: mydata.email,
             subject: mydata.subject,
             text: mydata.text,
@@ -166,7 +180,7 @@ ConsultantService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(consultant_entity_1.Consultant)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        dist_1.MailerService])
+        mail_service_1.MailService])
 ], ConsultantService);
 exports.ConsultantService = ConsultantService;
 //# sourceMappingURL=consultant.service.js.map

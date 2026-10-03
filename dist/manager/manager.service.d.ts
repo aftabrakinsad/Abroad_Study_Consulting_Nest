@@ -1,12 +1,12 @@
 import { Repository } from 'typeorm';
 import { Manager } from "../entities/manager.entity";
 import { ManagerUpdateDto } from "src/dtos/manager-update.dto";
-import { MailerService } from "@nestjs-modules/mailer/dist";
+import { MailService } from 'src/mail/mail.service';
 export declare class ManagerService {
     private managerRepo;
-    private mailerService;
-    constructor(managerRepo: Repository<Manager>, mailerService: MailerService);
-    getManagers(): any;
+    private mailService;
+    constructor(managerRepo: Repository<Manager>, mailService: MailService);
+    getManagers(): Promise<any>;
     getManagerById(id: any): Promise<{
         name: string;
         email: string;
@@ -17,8 +17,13 @@ export declare class ManagerService {
     addManager(mydto: any): Promise<void>;
     updateManager(name: any, email: any): any;
     updateManagerbyId(mydto: ManagerUpdateDto, id: any): any;
-    deleteManagerbyId(id: any): any;
-    signup(mydto: any): Promise<void>;
-    signin(mydto: any): Promise<boolean>;
-    Email(mydata: any): Promise<SentMessageInfo>;
+    deleteManagerbyId(id: any): Promise<import("typeorm").DeleteResult>;
+    updateProfile(email: any, mydto: any): Promise<{
+        message: string;
+    }>;
+    signin(mydto: any): Promise<false | Manager>;
+    Email(mydata: any): Promise<{
+        simulated: boolean;
+        messageId: any;
+    }>;
 }

@@ -28,15 +28,20 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const manager_entity_1 = require("../entities/manager.entity");
-const dist_1 = require("@nestjs-modules/mailer/dist");
-const bcrypt = require("bcrypt");
+const mail_service_1 = require("../mail/mail.service");
+const bcrypt = require("bcryptjs");
+const demo_1 = require("../auth/demo");
 let ManagerService = class ManagerService {
-    constructor(managerRepo, mailerService) {
+    constructor(managerRepo, mailService) {
         this.managerRepo = managerRepo;
-        this.mailerService = mailerService;
+        this.mailService = mailService;
     }
-    getManagers() {
-        return this.managerRepo.find();
+    async getManagers() {
+        const rows = await this.managerRepo.find({ order: { id: 'ASC' } });
+        return rows.map((_a) => {
+            var { password } = _a, row = __rest(_a, ["password"]);
+            return row;
+        });
     }
     async getManagerById(id) {
         const data = await this.managerRepo.findOne({ where: { id } });
@@ -51,7 +56,7 @@ let ManagerService = class ManagerService {
     async manager_profie(email) {
         const data = await this.managerRepo.findOne({ where: { email } });
         if (data !== null) {
-            const { id } = data, filteredData = __rest(data, ["id"]);
+            const { password } = data, filteredData = __rest(data, ["password"]);
             return filteredData;
         }
         else {
@@ -92,31 +97,26 @@ let ManagerService = class ManagerService {
     updateManagerbyId(mydto, id) {
         return this.managerRepo.update(id, mydto);
     }
-    deleteManagerbyId(id) {
+    async deleteManagerbyId(id) {
+        const manager = await this.managerRepo.findOne({ where: { id } });
+        if (manager && (0, demo_1.isDemoAccount)(manager.email)) {
+            throw new common_1.ForbiddenException({ message: "The demo account can't be deleted" });
+        }
         return this.managerRepo.delete(id);
     }
-    async signup(mydto) {
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(mydto.password, salt);
-        mydto.password = hashedPassword;
-        const existingManager = await this.managerRepo.findOne({ where: { name: mydto.name } });
-        const existingManagerEmail = await this.managerRepo.findOne({ where: { email: mydto.email } });
-        if (mydto.name === '') {
-            throw new common_1.HttpException({ message: "Please provide the username" }, common_1.HttpStatus.BAD_REQUEST);
+    async updateProfile(email, mydto) {
+        if (!mydto.name || mydto.name.trim() === '') {
+            throw new common_1.HttpException({ message: "Please provide the name" }, common_1.HttpStatus.BAD_REQUEST);
         }
-        else if (mydto.address === '') {
+        if (!mydto.address || mydto.address.trim() === '') {
             throw new common_1.HttpException({ message: "Please provide the address" }, common_1.HttpStatus.BAD_REQUEST);
         }
-        else if (existingManager) {
-            throw new common_1.HttpException({ message: "Username already exists" }, common_1.HttpStatus.BAD_REQUEST);
+        const changes = { name: mydto.name, address: mydto.address };
+        if (mydto.password && !(0, demo_1.isDemoAccount)(email)) {
+            changes.password = await bcrypt.hash(mydto.password, await bcrypt.genSalt());
         }
-        else if (existingManagerEmail) {
-            throw new common_1.HttpException({ message: "Email already exists" }, common_1.HttpStatus.BAD_REQUEST);
-        }
-        else {
-            await this.managerRepo.save(mydto);
-            throw new common_1.HttpException('Registration Successful', common_1.HttpStatus.OK);
-        }
+        await this.managerRepo.update({ email }, changes);
+        return { message: 'Profile updated' };
     }
     async signin(mydto) {
         if (mydto.email != null && mydto.password != null) {
@@ -126,7 +126,7 @@ let ManagerService = class ManagerService {
             }
             const isMatch = await bcrypt.compare(mydto.password, mydata.password);
             if (isMatch) {
-                return true;
+                return mydata;
             }
             else {
                 return false;
@@ -137,7 +137,7 @@ let ManagerService = class ManagerService {
         }
     }
     async Email(mydata) {
-        return await this.mailerService.sendMail({
+        return await this.mailService.sendMail({
             to: mydata.email,
             subject: mydata.subject,
             text: mydata.text,
@@ -148,7 +148,7 @@ ManagerService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(manager_entity_1.Manager)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        dist_1.MailerService])
+        mail_service_1.MailService])
 ], ManagerService);
 exports.ManagerService = ManagerService;
 //# sourceMappingURL=manager.service.js.map

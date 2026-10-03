@@ -17,6 +17,10 @@ export class Admin {
 
   @Column()
   address: string;
+
+  // The master admin is the only one who can create, edit or delete other admins
+  @Column({ default: false })
+  isMaster: boolean;
   
   // @OneToMany(() => Manager, (manager) => manager.admin)
   // managers: Manager[];

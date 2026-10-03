@@ -1,12 +1,34 @@
+import { JwtService } from '@nestjs/jwt';
+import { ManagerService } from 'src/manager/manager.service';
 import { ConsultantService } from './consultant.service';
 import { ConsultantDto } from 'src/dtos/Consultant.dto';
+import { ApplicationService } from 'src/student/application.service';
 export declare class ConsultantController {
     private consultantService;
-    constructor(consultantService: ConsultantService);
-    getProfile(session: any): any;
-    signup(mydto: ConsultantDto): Promise<any>;
-    signout(session: any): {
+    private managerService;
+    private jwtService;
+    private applicationService;
+    constructor(consultantService: ConsultantService, managerService: ManagerService, jwtService: JwtService, applicationService: ApplicationService);
+    signin(mydto: ConsultantDto): Promise<{
+        message: string;
+        token: string;
+        email: string;
+        name: string;
+        role: string;
+    }>;
+    signout(): {
         message: string;
     };
-    sendEmail(mydata: any): Promise<SentMessageInfo>;
+    getProfile(req: any): any;
+    updateProfile(req: any, mydto: any): any;
+    getManagers(): any;
+    getApplications(req: any): any;
+    updateApplication(req: any, id: number, mydto: any): any;
+    sendEmail(mydata: any): Promise<{
+        message: string;
+        result: {
+            simulated: boolean;
+            messageId: any;
+        };
+    }>;
 }

@@ -1,20 +1,22 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Admin } from "../entities/admin.entity";
 import { AdminUpdateDto } from "../dtos/admin-update.dto";
-import * as bcrypt from 'bcrypt';
-import { MailerService } from "@nestjs-modules/mailer/dist";
+import * as bcrypt from 'bcryptjs';
+import { MailService } from 'src/mail/mail.service';
+import { isDemoAccount } from 'src/auth/demo';
 @Injectable()
 export class AdminService {
     constructor(
         @InjectRepository(Admin)
         private adminRepo: Repository<Admin>,
-        private mailerService: MailerService  
+        private mailService: MailService  
     ) {}
 
-    getIndex(): any { 
-        return this.adminRepo.find();
+    async getIndex(): Promise<any> {
+        const admins = await this.adminRepo.find({ order: { id: 'ASC' } });
+        return admins.map(({ password, ...admin }) => admin);
     }
 
     getTotalAdmins(): any {
@@ -120,12 +122,8 @@ export class AdminService {
         }
     }
 
-    async updateAdmin(mydto)
+    async updateAdmin(mydto, email)
     {
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(mydto.password, salt);
-        mydto.password = hashedPassword;
-
         // const existingAdmin = await this.adminRepo.findOne({ where: { username: mydto.username } });
         // const existingAdminEmail = await this.adminRepo.findOne({ where: { email: mydto.email } });
 
@@ -133,21 +131,19 @@ export class AdminService {
         {
             throw new HttpException({ message: "Please provide the username" }, HttpStatus.BAD_REQUEST);
         } 
-        else if (mydto.password === '')
-        {
-            throw new HttpException({ message: "Please provide the password" }, HttpStatus.BAD_REQUEST);
-        }
-        else if (mydto.email === '')
-        {
-            throw new HttpException({ message: "Please provide the email" }, HttpStatus.BAD_REQUEST);
-        }
         // else if(existingAdminEmail)
         // {
         //     throw new HttpException({ message: "Email already exists" }, HttpStatus.BAD_REQUEST);
         // }
         else 
         {
-            await this.adminRepo.update({ email:mydto.email },{ username:mydto.username });
+            const changes: Partial<Admin> = { username: mydto.username, address: mydto.address };
+            // Password is optional; the demo account's password never changes so the next visitor can still log in
+            if (mydto.password && !isDemoAccount(email))
+            {
+                changes.password = await bcrypt.hash(mydto.password, await bcrypt.genSalt());
+            }
+            await this.adminRepo.update({ email }, changes);
             throw new HttpException('Admin Updated', HttpStatus.OK);
         }
     }
@@ -157,8 +153,13 @@ export class AdminService {
         return this.adminRepo.update(id, mydto);
     }
 
-    deleteAdminbyId(id): any
+    async deleteAdminbyId(id)
     {
+        const admin = await this.adminRepo.findOne({ where: { id } });
+        if (admin && isDemoAccount(admin.email))
+        {
+            throw new ForbiddenException({ message: "The demo account can't be deleted" });
+        }
         return this.adminRepo.delete(id);
     }
         
@@ -172,37 +173,6 @@ export class AdminService {
     //     });
     // }
 
-    async signup(mydto)
-    {
-        const salt = await bcrypt.genSalt();
-        const hashedPassword = await bcrypt.hash(mydto.password, salt);
-        mydto.password = hashedPassword;
-
-        const existingAdmin = await this.adminRepo.findOne({ where: { username: mydto.username } });
-        const existingAdminEmail = await this.adminRepo.findOne({ where: { email: mydto.email } });
-
-        if (mydto.username === '')
-        {
-            throw new HttpException({ message: "Please provide the username" }, HttpStatus.BAD_REQUEST);
-        } 
-        else if (mydto.address === '')
-        {
-            throw new HttpException({ message: "Please provide the address" }, HttpStatus.BAD_REQUEST);
-        }
-        else if (existingAdmin)
-        {
-            throw new HttpException({ message: "Username already exists" }, HttpStatus.BAD_REQUEST);
-        }
-        else if(existingAdminEmail)
-        {
-            throw new HttpException({ message: "Email already exists" }, HttpStatus.BAD_REQUEST);
-        }
-        else 
-        {
-            await this.adminRepo.save(mydto);
-            throw new HttpException('Registration Successful', HttpStatus.OK);
-        }
-    }
 
     async signin(mydto)
     {
@@ -216,7 +186,7 @@ export class AdminService {
             const isMatch = await bcrypt.compare(mydto.password, mydata.password);
             if (isMatch)
             {
-                return true;
+                return mydata;
             }
             else
             {
@@ -231,10 +201,10 @@ export class AdminService {
 
     async sendEmail(mydata) {
     try {
-      const result = await this.mailerService.sendMail({
+      const result = await this.mailService.sendMail({
         to: mydata.email,
         subject: mydata.subject,
-        text: mydata.content
+        text: mydata.text
       });
       return result;
     } catch (error) {

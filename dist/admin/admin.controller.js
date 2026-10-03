@@ -14,21 +14,34 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminController = void 0;
 const common_1 = require("@nestjs/common");
+const jwt_1 = require("@nestjs/jwt");
 const exceptions_1 = require("@nestjs/common/exceptions");
 const manager_service_1 = require("../manager/manager.service");
 const admin_update_dto_1 = require("../dtos/admin-update.dto");
 const admin_service_1 = require("./admin.service");
 const admin_dto_1 = require("../dtos/admin.dto");
 const manager_dto_1 = require("../dtos/manager.dto");
+const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const roles_decorator_1 = require("../auth/roles.decorator");
 const Consultant_dto_1 = require("../dtos/Consultant.dto");
 const consultant_service_1 = require("../consultant/consultant.service");
 const manager_update_dto_1 = require("../dtos/manager-update.dto");
 const consultant_update_dtp_1 = require("../dtos/consultant-update.dtp");
+const student_service_1 = require("../student/student.service");
+const application_service_1 = require("../student/application.service");
 let AdminController = class AdminController {
-    constructor(adminService, managerService, consultantService) {
+    constructor(adminService, managerService, consultantService, jwtService, studentService, applicationService) {
         this.adminService = adminService;
         this.managerService = managerService;
         this.consultantService = consultantService;
+        this.jwtService = jwtService;
+        this.studentService = studentService;
+        this.applicationService = applicationService;
+    }
+    requireMaster(req) {
+        if (!req.user.master) {
+            throw new exceptions_1.ForbiddenException({ message: "Only the master admin can manage admins" });
+        }
     }
     getAdmin() {
         return this.adminService.getIndex();
@@ -48,8 +61,29 @@ let AdminController = class AdminController {
     getConsultantStatistics() {
         return this.consultantService.getTotalConsultants();
     }
-    getProfile(session) {
-        return this.adminService.myprofie(session.email);
+    getProfile(req) {
+        return this.adminService.myprofie(req.user.email);
+    }
+    getUserStatistics() {
+        return this.studentService.getTotalStudents();
+    }
+    getApplicationStatistics() {
+        return this.applicationService.getTotal();
+    }
+    getUsers() {
+        return this.studentService.getStudents();
+    }
+    getUserByID(id) {
+        return this.studentService.getStudentById(id);
+    }
+    deleteUser(id) {
+        return this.studentService.deleteStudent(id);
+    }
+    getApplications() {
+        return this.applicationService.getAll();
+    }
+    assignApplication(id, consultantId) {
+        return this.applicationService.assign(id, consultantId);
     }
     getAdminByID(id) {
         return this.adminService.getAdminById(id);
@@ -66,25 +100,27 @@ let AdminController = class AdminController {
     getAdminByEmail(email) {
         return this.adminService.getAdminByEmail(email);
     }
-    async updateAdmin(adminDto) {
-        return this.adminService.updateAdmin(adminDto);
+    async updateAdmin(req, adminDto) {
+        return this.adminService.updateAdmin(adminDto, req.user.email);
     }
-    updateManager(session, name) {
-        return this.managerService.updateManager(name, session.email);
+    updateManager(req, name) {
+        return this.managerService.updateManager(name, req.user.email);
     }
-    updateConsultant(session, name) {
-        return this.consultantService.updateConsultant(name, session.email);
+    updateConsultant(req, name) {
+        return this.consultantService.updateConsultant(name, req.user.email);
     }
-    updateAdminbyid(mydto, id) {
+    updateAdminbyid(req, mydto, id) {
+        this.requireMaster(req);
         return this.adminService.updateAdminbyId(mydto, id);
     }
     updateManagerbyid(mydto, id) {
         return this.managerService.updateManagerbyId(mydto, id);
     }
     updateConsultantbyid(mydto, id) {
-        return this.consultantService.updateConsultantbyid(id, mydto);
+        return this.consultantService.updateConsultantbyid(mydto, id);
     }
-    deleteAdminbyId(id) {
+    deleteAdminbyId(req, id) {
+        this.requireMaster(req);
         return this.adminService.deleteAdminbyId(id);
     }
     deleteManagerId(id) {
@@ -93,7 +129,8 @@ let AdminController = class AdminController {
     deleteConsultantId(id) {
         return this.consultantService.deleteConsultantId(id);
     }
-    async addAdmin(admindto) {
+    async addAdmin(req, admindto) {
+        this.requireMaster(req);
         return this.adminService.addAdmin(admindto);
     }
     async addManager(managerDto) {
@@ -102,31 +139,26 @@ let AdminController = class AdminController {
     async addConsultant(consultantDto) {
         return this.consultantService.addConsultant(consultantDto);
     }
-    async signup(mydto) {
-        return this.adminService.signup(mydto);
-    }
-    async signin(session, mydto) {
-        const res = await this.adminService.signin(mydto);
-        if (res == true) {
-            session.email = mydto.email;
-            throw new exceptions_1.HttpException({ message: "Login Successful!" }, common_1.HttpStatus.ACCEPTED);
+    async signin(mydto) {
+        const admin = await this.adminService.signin(mydto);
+        if (admin) {
+            const token = await this.jwtService.signAsync({ sub: admin.id, email: admin.email, role: 'admin', master: admin.isMaster });
+            return { message: "Login Successful!", token, email: admin.email, name: admin.username, role: 'admin', master: admin.isMaster };
         }
         else {
             throw new exceptions_1.UnauthorizedException({ message: "invalid credentials" });
         }
     }
-    signout(req) {
-        if (req.session.destroy()) {
-            return ({ message: "You are logged out" });
-        }
-        else {
-            throw new exceptions_1.UnauthorizedException("invalid actions");
-        }
+    signout() {
+        return { message: "You are logged out" };
     }
     async sendEmail(mydata) {
         try {
             const result = await this.adminService.sendEmail(mydata);
-            return { message: 'Email sent successfully', result };
+            const message = result.simulated
+                ? 'Email simulated (sending is disabled in the demo)'
+                : 'Email sent successfully';
+            return { message, result };
         }
         catch (error) {
             return { message: 'Failed to send email', error: error.message };
@@ -135,49 +167,110 @@ let AdminController = class AdminController {
 };
 __decorate([
     (0, common_1.Get)('/index'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Object)
 ], AdminController.prototype, "getAdmin", null);
 __decorate([
     (0, common_1.Get)('/managers'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Object)
 ], AdminController.prototype, "getManagers", null);
 __decorate([
     (0, common_1.Get)('/consultants'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Object)
 ], AdminController.prototype, "getConsultants", null);
 __decorate([
     (0, common_1.Get)('/adminCount'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Object)
 ], AdminController.prototype, "getAdminStatistics", null);
 __decorate([
     (0, common_1.Get)('/managerCount'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Object)
 ], AdminController.prototype, "getManagerStatistics", null);
 __decorate([
     (0, common_1.Get)('/consultantCount'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Object)
 ], AdminController.prototype, "getConsultantStatistics", null);
 __decorate([
     (0, common_1.Get)('/profile'),
-    __param(0, (0, common_1.Session)()),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Object)
 ], AdminController.prototype, "getProfile", null);
 __decorate([
+    (0, common_1.Get)('/userCount'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Object)
+], AdminController.prototype, "getUserStatistics", null);
+__decorate([
+    (0, common_1.Get)('/applicationCount'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Object)
+], AdminController.prototype, "getApplicationStatistics", null);
+__decorate([
+    (0, common_1.Get)('/users'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Object)
+], AdminController.prototype, "getUsers", null);
+__decorate([
+    (0, common_1.Get)('/user/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Object)
+], AdminController.prototype, "getUserByID", null);
+__decorate([
+    (0, common_1.Delete)('/deleteUser/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Object)
+], AdminController.prototype, "deleteUser", null);
+__decorate([
+    (0, common_1.Get)('/applications'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Object)
+], AdminController.prototype, "getApplications", null);
+__decorate([
+    (0, common_1.Put)('/applications/:id/assign'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)('consultantId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Object)
+], AdminController.prototype, "assignApplication", null);
+__decorate([
     (0, common_1.Get)('/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -185,6 +278,7 @@ __decorate([
 ], AdminController.prototype, "getAdminByID", null);
 __decorate([
     (0, common_1.Get)('/consultant/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -192,6 +286,7 @@ __decorate([
 ], AdminController.prototype, "getConsultantByID", null);
 __decorate([
     (0, common_1.Get)('/manager/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -199,6 +294,7 @@ __decorate([
 ], AdminController.prototype, "getManagerByID", null);
 __decorate([
     (0, common_1.Get)('username/:username'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('username')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -206,6 +302,7 @@ __decorate([
 ], AdminController.prototype, "getAdminByName", null);
 __decorate([
     (0, common_1.Get)('/email/:email'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('email')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -213,14 +310,17 @@ __decorate([
 ], AdminController.prototype, "getAdminByEmail", null);
 __decorate([
     (0, common_1.Put)('/updateAdmin'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [admin_dto_1.AdminDto]),
+    __metadata("design:paramtypes", [Object, admin_dto_1.AdminDto]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "updateAdmin", null);
 __decorate([
     (0, common_1.Put)('/updateManager/'),
-    __param(0, (0, common_1.Session)()),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)('name')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String]),
@@ -228,7 +328,8 @@ __decorate([
 ], AdminController.prototype, "updateManager", null);
 __decorate([
     (0, common_1.Put)('/updateConsultant/'),
-    __param(0, (0, common_1.Session)()),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)('name')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String]),
@@ -236,14 +337,17 @@ __decorate([
 ], AdminController.prototype, "updateConsultant", null);
 __decorate([
     (0, common_1.Put)('/updateAdmin/:id'),
-    __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [admin_update_dto_1.AdminUpdateDto, Number]),
+    __metadata("design:paramtypes", [Object, admin_update_dto_1.AdminUpdateDto, Number]),
     __metadata("design:returntype", Object)
 ], AdminController.prototype, "updateAdminbyid", null);
 __decorate([
     (0, common_1.Put)('/updateManager/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -252,6 +356,7 @@ __decorate([
 ], AdminController.prototype, "updateManagerbyid", null);
 __decorate([
     (0, common_1.Put)('/updateConsultant/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -260,13 +365,16 @@ __decorate([
 ], AdminController.prototype, "updateConsultantbyid", null);
 __decorate([
     (0, common_1.Delete)('/deleteAdmin/:id'),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Object, Number]),
     __metadata("design:returntype", Object)
 ], AdminController.prototype, "deleteAdminbyId", null);
 __decorate([
     (0, common_1.Delete)('/deleteManager/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -274,6 +382,7 @@ __decorate([
 ], AdminController.prototype, "deleteManagerId", null);
 __decorate([
     (0, common_1.Delete)('/deleteConsultant/:id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -281,13 +390,16 @@ __decorate([
 ], AdminController.prototype, "deleteConsultantId", null);
 __decorate([
     (0, common_1.Post)('/addAdmin'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [admin_dto_1.AdminDto]),
+    __metadata("design:paramtypes", [Object, admin_dto_1.AdminDto]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "addAdmin", null);
 __decorate([
     (0, common_1.Post)('/addManager'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [manager_dto_1.ManagerDto]),
@@ -295,35 +407,28 @@ __decorate([
 ], AdminController.prototype, "addManager", null);
 __decorate([
     (0, common_1.Post)('/addConsultant'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Consultant_dto_1.ConsultantDto]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "addConsultant", null);
 __decorate([
-    (0, common_1.Post)('/signup'),
+    (0, common_1.Post)('/signin'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [admin_dto_1.AdminDto]),
     __metadata("design:returntype", Promise)
-], AdminController.prototype, "signup", null);
-__decorate([
-    (0, common_1.Post)('/signin'),
-    __param(0, (0, common_1.Session)()),
-    __param(1, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, admin_dto_1.AdminDto]),
-    __metadata("design:returntype", Promise)
 ], AdminController.prototype, "signin", null);
 __decorate([
     (0, common_1.Post)('/signout'),
-    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "signout", null);
 __decorate([
     (0, common_1.Post)('/send-email'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -331,9 +436,13 @@ __decorate([
 ], AdminController.prototype, "sendEmail", null);
 AdminController = __decorate([
     (0, common_1.Controller)('admin'),
+    (0, roles_decorator_1.Roles)('admin'),
     __metadata("design:paramtypes", [admin_service_1.AdminService,
         manager_service_1.ManagerService,
-        consultant_service_1.ConsultantService])
+        consultant_service_1.ConsultantService,
+        jwt_1.JwtService,
+        student_service_1.StudentService,
+        application_service_1.ApplicationService])
 ], AdminController);
 exports.AdminController = AdminController;
 //# sourceMappingURL=admin.controller.js.map
