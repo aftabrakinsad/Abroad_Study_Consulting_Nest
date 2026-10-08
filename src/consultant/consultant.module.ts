@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { StudentModule } from 'src/student/student.module';
+import { StudentModule } from '../student/student.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Consultant } from 'src/entities/consultant.entity';
-import { Manager } from 'src/entities/manager.entity';
+import { Consultant } from '../entities/consultant.entity';
+import { Manager } from '../entities/manager.entity';
 import { ConsultantController } from './consultant.controller';
 import { ConsultantService } from './consultant.service';
-import { ManagerService } from 'src/manager/manager.service';
+import { ManagerService } from '../manager/manager.service';
 
 @Module({
   imports: [StudentModule, TypeOrmModule.forFeature([Consultant, Manager])],

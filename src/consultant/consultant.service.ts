@@ -1,12 +1,12 @@
-import { MailService } from 'src/mail/mail.service';
+import { MailService } from '../mail/mail.service';
 import { ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ConsultantDto } from 'src/dtos/Consultant.dto';
-import { CounsultantUpdateDto } from 'src/dtos/consultant-update.dtp';
-import { Consultant } from 'src/entities/consultant.entity';
+import { ConsultantDto } from '../dtos/Consultant.dto';
+import { CounsultantUpdateDto } from '../dtos/consultant-update.dtp';
+import { Consultant } from '../entities/consultant.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { isDemoAccount } from 'src/auth/demo';
+import { isDemoAccount } from '../auth/demo';
 
 @Injectable()
 export class ConsultantService {

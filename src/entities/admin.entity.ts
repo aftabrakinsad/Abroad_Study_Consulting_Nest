@@ -1,4 +1,4 @@
-import { Manager } from 'src/entities/manager.entity';
+import { Manager } from './manager.entity';
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany, Unique } from 'typeorm';
 
 @Entity("admin")

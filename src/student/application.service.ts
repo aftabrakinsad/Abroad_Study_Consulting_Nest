@@ -1,8 +1,8 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Application, APPLICATION_STATUSES } from 'src/entities/application.entity';
-import { Consultant } from 'src/entities/consultant.entity';
+import { Application, APPLICATION_STATUSES } from '../entities/application.entity';
+import { Consultant } from '../entities/consultant.entity';
 
 @Injectable()
 export class ApplicationService {

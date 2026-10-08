@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Put, Req, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { Roles } from 'src/auth/roles.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
 import { StudentService } from './student.service';
 import { ApplicationService } from './application.service';
 

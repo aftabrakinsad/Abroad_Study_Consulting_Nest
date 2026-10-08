@@ -1,11 +1,11 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { Roles } from 'src/auth/roles.decorator';
-import { ConsultantService } from 'src/consultant/consultant.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { ConsultantService } from '../consultant/consultant.service';
 import { ManagerService } from './manager.service';
-import { ManagerDto } from 'src/dtos/manager.dto';
-import { ApplicationService } from 'src/student/application.service';
+import { ManagerDto } from '../dtos/manager.dto';
+import { ApplicationService } from '../student/application.service';
 
 @Controller('manager')
 @Roles('manager')

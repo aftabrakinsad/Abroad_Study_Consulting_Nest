@@ -3,11 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Manager } from "../entities/manager.entity";
 import { ManagerDto } from "../dtos/manager.dto";
-import { Admin } from "src/entities/admin.entity";
-import { ManagerUpdateDto } from "src/dtos/manager-update.dto";
-import { MailService } from 'src/mail/mail.service';
+import { Admin } from "../entities/admin.entity";
+import { ManagerUpdateDto } from "../dtos/manager-update.dto";
+import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcryptjs';
-import { isDemoAccount } from 'src/auth/demo';
+import { isDemoAccount } from '../auth/demo';
 
 
 @Injectable()

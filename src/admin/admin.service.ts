@@ -4,8 +4,8 @@ import { Repository } from 'typeorm';
 import { Admin } from "../entities/admin.entity";
 import { AdminUpdateDto } from "../dtos/admin-update.dto";
 import * as bcrypt from 'bcryptjs';
-import { MailService } from 'src/mail/mail.service';
-import { isDemoAccount } from 'src/auth/demo';
+import { MailService } from '../mail/mail.service';
+import { isDemoAccount } from '../auth/demo';
 @Injectable()
 export class AdminService {
     constructor(

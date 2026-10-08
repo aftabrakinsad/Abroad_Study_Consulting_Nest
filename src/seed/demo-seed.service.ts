@@ -2,12 +2,12 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { Admin } from 'src/entities/admin.entity';
-import { Manager } from 'src/entities/manager.entity';
-import { Consultant } from 'src/entities/consultant.entity';
-import { Student } from 'src/entities/student.entity';
-import { Application } from 'src/entities/application.entity';
-import { demoAccounts } from 'src/auth/demo';
+import { Admin } from '../entities/admin.entity';
+import { Manager } from '../entities/manager.entity';
+import { Consultant } from '../entities/consultant.entity';
+import { Student } from '../entities/student.entity';
+import { Application } from '../entities/application.entity';
+import { demoAccounts } from '../auth/demo';
 
 // Creates one demo account per role on startup, so visitors can log in without registering.
 // The demo admin is the master admin, since staff accounts can only be created by admins.

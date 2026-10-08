@@ -2,8 +2,8 @@ import { ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundExce
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { Student } from 'src/entities/student.entity';
-import { isDemoAccount } from 'src/auth/demo';
+import { Student } from '../entities/student.entity';
+import { isDemoAccount } from '../auth/demo';
 
 const EMAIL = /\S+@\S+\.\S+/;
 
